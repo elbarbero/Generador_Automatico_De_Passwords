@@ -2,6 +2,7 @@
 import string
 import Usuario as us
 import Contrasena as cn
+import encriptacion as enc
 try:
 	from tkinter import *
 	from tkinter import messagebox as MessageBox
@@ -52,7 +53,9 @@ def chooseCharacters(typeChar):
 def register():
 	try:
 		if nombre.get() != "" or passw.get() != "":
-			cursor.execute("INSERT INTO usuarios VALUES (null, '{}','{}')".format(str(nombre.get()), str(passw.get())))
+			s = enc.Seguridad()
+			clave = s.encrypt(s.key, str(passw.get()))
+			cursor.execute("INSERT INTO usuarios VALUES (null, '{}','{}')".format(str(nombre.get()), str(clave)))
 			conexion.commit()
 		else:
 			MessageBox.showinfo("Registro","Debes rellenar el campo del nombre y de la contraseña")
@@ -67,7 +70,7 @@ def login():
 	user = cursor.execute("SELECT * FROM usuarios WHERE nick = '{}' AND pass = '{}'".format(str(nombre.get()), str(passw.get()))).fetchone()
 	if user != None:
 		print(user)
-		#boton guardar enabled
+		btnSave.config(state="normal")
 	else:
 		MessageBox.showinfo("Login","Usuario no existe")
 
@@ -92,7 +95,7 @@ def crear_db():
 			CREATE TABLE usuarios(
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			nick VARCHAR(100) UNIQUE NOT NULL,
-			pass VARCHAR(100) UNIQUE NOT NULL)
+			pass VARCHAR(300) UNIQUE NOT NULL)
 			""")
 	except sql.OperationalError as ex:
 		print(type(ex).__name__)
@@ -104,7 +107,7 @@ def crear_db():
 		cursor.execute("""
 			CREATE TABLE contrasenas(
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			password VARCHAR(20) UNIQUE NOT NULL, 
+			password VARCHAR(300) UNIQUE NOT NULL, 
 			id_usuario INTEGER NOT NULL,
 			FOREIGN KEY(id_usuario) REFERENCES usuarios(id))
 			""")
@@ -158,7 +161,8 @@ Button(root, image=imagen1, height = 55, width = 50, command = lambda: retry(n_c
 imagen2 = PhotoImage(file="copy.gif")
 Button(root, image=imagen2, height = 55, width = 50, command = lambda: pc.copy(password.get())).grid(row=2, column=7)
 imagen3 = PhotoImage(file="save.gif")
-Button(root, image=imagen3, height = 55, width = 50, command = save).grid(row=2, column=8)
+btnSave = Button(root, image=imagen3, height = 55, width = 50, state="disabled", command = save)
+btnSave.grid(row=2, column=8)
 
 
 root.mainloop()

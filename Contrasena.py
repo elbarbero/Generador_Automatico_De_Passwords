@@ -1,24 +1,17 @@
-import hashlib
-
+import encriptacion as enc
 class Contrasena():
 
 	def __init__(self, ident, password, user):
+		self.s = enc.Seguridad()
 		self.id = ident
-		self.password = self.encrypt(password)
+		self.password = self.s.encrypt(self.s.key, str(password))
 		self.user = user
 
 	def __str__(self):
 		return "Contraseña del usuario {}".format(self.user.nick)
 
-	def encrypt(self, data):
-		h = hashlib.new("sha256", str(data).encode())
-
-		return h.digest(), h.hexdigest()
- 
-	def decrypt(self):
-		pass
-
 
 #c = Contrasena(1, "12345Ral", 2)
-#print(c.encrypt(str(c.password)))
-#print(c.decrypt())
+#print(c.password)
+#print(c.s.decrypt(c.s.key, c.password))
+
