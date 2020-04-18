@@ -3,6 +3,7 @@ import string
 import Usuario as us
 import Contrasena as cn
 import encriptacion as enc
+import cryptography
 try:
 	from tkinter import *
 	from tkinter import messagebox as MessageBox
@@ -22,7 +23,6 @@ except Exception as ex:
 	import random
 	import pyperclip as pc
 	import sqlite3 as sql
-
 
 def generatePassword(size, typeChar):
 	# string.ascii_uppercase + string.ascii_lowercase
@@ -53,9 +53,10 @@ def chooseCharacters(typeChar):
 def register():
 	try:
 		if nombre.get() != "" or passw.get() != "":
-			s = enc.Seguridad()
-			clave = s.encrypt(s.key, str(passw.get()))
-			cursor.execute("INSERT INTO usuarios VALUES (null, '{}','{}')".format(str(nombre.get()), str(clave)))
+			clave = s.encrypt(str(passw.get()))
+			print(type(clave))
+			print(clave)
+			cursor.execute("INSERT INTO usuarios VALUES (null, '{}','{}')".format(str(nombre.get()), clave.decode()))
 			conexion.commit()
 		else:
 			MessageBox.showinfo("Registro","Debes rellenar el campo del nombre y de la contraseña")
@@ -64,15 +65,38 @@ def register():
 		MessageBox.showinfo("Registro","El usuario ya existe")
 	else:
 		MessageBox.showinfo("Registro","Usuario creado correctamente")
+		login()
 
 def login():
-	global user
-	user = cursor.execute("SELECT * FROM usuarios WHERE nick = '{}' AND pass = '{}'".format(str(nombre.get()), str(passw.get()))).fetchone()
-	if user != None:
-		print(user)
-		btnSave.config(state="normal")
+	global user, s
+	#users = cursor.execute("SELECT * FROM usuarios").fetchall()
+	#print(users)
+	#s.createKey(str(passw.get()))
+	#print(s.key)
+	#users[1][2].encode()
+	#print(s.decrypt(users[5][2].encode()))
+	try:
+		user = cursor.execute("SELECT * FROM usuarios WHERE nick = '{}'".format(str(nombre.get()))).fetchone()
+		if user != None:
+			print(s.key)
+			s.createKey(str(passw.get()))
+			print(s.key)
+			decodificado = s.decrypt(user[2].encode())
+			print(decodificado.decode())
+			print(str(passw.get()))
+	#		if decodificado.decode() == str(passw.get()):
+	#			btnSave.config(state="normal")
+	#		else:
+	#			MessageBox.showinfo("Login","Contraseña incorrecta")
+		else:
+			MessageBox.showinfo("Login","Usuario no existe")
+	except (cryptography.exceptions.InvalidSignature, cryptography.fernet.InvalidToken) as ex:
+		print(type(ex).__name__)
+		btnSave.config(state="disabled")
+		MessageBox.showinfo("Login","Contraseña incorrecta")
 	else:
-		MessageBox.showinfo("Login","Usuario no existe")
+		btnSave.config(state="normal") if decodificado.decode() == str(passw.get()) else None
+
 
 def save():
 	try:
@@ -95,7 +119,7 @@ def crear_db():
 			CREATE TABLE usuarios(
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			nick VARCHAR(100) UNIQUE NOT NULL,
-			pass VARCHAR(300) UNIQUE NOT NULL)
+			pass VARCHAR(300) NOT NULL)
 			""")
 	except sql.OperationalError as ex:
 		print(type(ex).__name__)
@@ -107,7 +131,9 @@ def crear_db():
 		cursor.execute("""
 			CREATE TABLE contrasenas(
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			password VARCHAR(300) UNIQUE NOT NULL, 
+			web VARCHAR(150), 
+			username VARCHAR(50) NOT NULL, 
+			password VARCHAR(300) NOT NULL, 
 			id_usuario INTEGER NOT NULL,
 			FOREIGN KEY(id_usuario) REFERENCES usuarios(id))
 			""")
@@ -118,6 +144,7 @@ def crear_db():
 		print("Tabla creada correctamente")
 
 root = Tk()
+s = enc.Seguridad()
 conexion = None
 cursor = None
 user = None
