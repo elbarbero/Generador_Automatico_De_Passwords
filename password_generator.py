@@ -98,15 +98,37 @@ def login():
 		btnSave.config(state="normal") if decodificado.decode() == str(passw.get()) else None
 
 
-def save():
+def savePassword():
 	try:
-		global user
-		cursor.execute("INSERT INTO contrasenas VALUES (null, '{}',{})".format(password.get(), user[0]))
+		global user, s			
+		clave = s.encrypt(str(password.get()))
+		print(type(clave))
+		print(clave)
+		cursor.execute("INSERT INTO contrasenas VALUES (null, '{}','{}','{}', {})".format(web.get(), username.get(), clave.decode(), user[0]))
 		conexion.commit()
 	except Exception as ex:
 		print(type(ex).__name__)
 		MessageBox.showerror("Save","No se ha podido guardar la contraseña")
 		conexion.rollback()
+
+def btnViewContrasenas():
+	global user
+	p = StringVar()
+	p.set(user[1])
+	print(p.get())
+	vContrasenas = Toplevel(root, padx=60, pady=10)
+	vContrasenas.title("Contraseña")
+	vContrasenas.resizable(0,0)
+	Label(vContrasenas, text="Página web").grid(row=1, column=1)
+	Entry(vContrasenas, textvariable=web, font=("Arial",12)).grid(row=1, column=2)
+	Label(vContrasenas, text="Username").grid(row=2, column=1)
+	Entry(vContrasenas, textvariable=username, font=("Arial",12)).grid(row=2, column=2)
+	Label(vContrasenas, text="Contraseña").grid(row=3, column=1)
+	Entry(vContrasenas, textvariable=password, font=("Arial",12)).grid(row=3, column=2)
+	Label(vContrasenas, text="Usuario").grid(row=4, column=1)
+	Entry(vContrasenas, textvariable=p, font=("Arial",12), state="disabled").grid(row=4, column=2)
+	Button(vContrasenas, text="Guardar", command = savePassword).grid(row=5, column=1, columnspan=2)
+
 
 def crear_db():
 	global conexion
@@ -153,6 +175,8 @@ characters = IntVar()
 password = StringVar()
 passw = StringVar()
 nombre = StringVar()
+username = StringVar()
+web = StringVar()
 crear_db()
 root.title("Generador de contraseñas")
 
@@ -188,7 +212,7 @@ Button(root, image=imagen1, height = 55, width = 50, command = lambda: retry(n_c
 imagen2 = PhotoImage(file="copy.gif")
 Button(root, image=imagen2, height = 55, width = 50, command = lambda: pc.copy(password.get())).grid(row=2, column=7)
 imagen3 = PhotoImage(file="save.gif")
-btnSave = Button(root, image=imagen3, height = 55, width = 50, state="disabled", command = save)
+btnSave = Button(root, image=imagen3, height = 55, width = 50, state="disabled", command = btnViewContrasenas)
 btnSave.grid(row=2, column=8)
 
 
