@@ -1,7 +1,7 @@
 
 import string
-import Usuario as us
-import Contrasena as cn
+from Usuario import *
+from Contrasena import *
 import encriptacion as enc
 import cryptography
 try:
@@ -76,18 +76,17 @@ def login():
 	#users[1][2].encode()
 	#print(s.decrypt(users[5][2].encode()))
 	try:
-		user = cursor.execute("SELECT * FROM usuarios WHERE nick = '{}'".format(str(nombre.get()))).fetchone()
-		if user != None:
+		u = cursor.execute("SELECT * FROM usuarios WHERE nick = '{}'".format(str(nombre.get()))).fetchone()
+		if u != None:
 			s.key = None
 			s.createKey(str(passw.get()))
-			print(user[2].encode())
-			decodificado = s.decrypt(user[2].encode())
-			print(decodificado.decode())
-			print(str(passw.get()))
-	#		if decodificado.decode() == str(passw.get()):
-	#			btnSave.config(state="normal")
-	#		else:
-	#			MessageBox.showinfo("Login","Contraseña incorrecta")
+			#print(u[2].encode())
+			decodificado = s.decrypt(u[2].encode())
+			#print(decodificado.decode())
+			#print(str(passw.get()))
+			user = Usuario(u[0], u[1], u[2])
+			print(u)
+			findAllPassword()
 		else:
 			MessageBox.showinfo("Login","Usuario no existe")
 	except (cryptography.exceptions.InvalidSignature, cryptography.fernet.InvalidToken) as ex:
@@ -102,35 +101,65 @@ def login():
 
 def savePassword():
 	try:
-		global user, s			
+		global user, s, vSaveContrasenas		
 		clave = s.encrypt(str(password.get()))
 		print(type(clave))
 		print(clave)
-		cursor.execute("INSERT INTO contrasenas VALUES (null, '{}','{}','{}', {})".format(web.get(), username.get(), clave.decode(), user[0]))
+		print(s.key)
+		cursor.execute("INSERT INTO contrasenas VALUES (null, '{}','{}','{}', {}, '{}')".format(web.get(), username.get(), clave.decode(), user.id, s.key.decode()))
 		conexion.commit()
+		vSaveContrasenas.quit
+		password.set("")
+		username.set("")
+		web.set("")
 	except Exception as ex:
 		print(type(ex).__name__)
 		MessageBox.showerror("Save","No se ha podido guardar la contraseña")
 		conexion.rollback()
 
+def findAllPassword():
+	global user, s
+	try:
+		cs = cursor.execute("SELECT * FROM contrasenas WHERE id_usuario = '{}'".format(user.id)).fetchall()
+		if cs != None:
+			for c in cs:
+				s.key = c[5].encode()
+				decodificado = s.decrypt(c[3].encode())
+				user.contrasenas.append(Contrasena(c[0], c[1], c[2], decodificado))
+			[print(n) for n in user.contrasenas]
+	except sql.IntegrityError as ex:
+		print(type(ex).__name__)
+
+
+def btnSaveContrasenas():
+	global user, vSaveContrasenas
+	p = StringVar()
+	p.set(user.nick)
+	print(p.get())
+	vSaveContrasenas = Toplevel(root, padx=60, pady=10)
+	vSaveContrasenas.title("Contraseñas")
+	vSaveContrasenas.resizable(0,0)
+	Label(vSaveContrasenas, text="Página web").grid(row=1, column=1)
+	Entry(vSaveContrasenas, textvariable=web, font=("Arial",12)).grid(row=1, column=2)
+	Label(vSaveContrasenas, text="Username").grid(row=2, column=1)
+	Entry(vSaveContrasenas, textvariable=username, font=("Arial",12)).grid(row=2, column=2)
+	Label(vSaveContrasenas, text="Contraseña").grid(row=3, column=1)
+	Entry(vSaveContrasenas, textvariable=password, font=("Arial",12)).grid(row=3, column=2)
+	Label(vSaveContrasenas, text="Usuario").grid(row=4, column=1)
+	Entry(vSaveContrasenas, textvariable=p, font=("Arial",12), state="disabled").grid(row=4, column=2)
+	Button(vSaveContrasenas, text="Guardar", command = savePassword).grid(row=5, column=1, columnspan=2)
+
 def btnViewContrasenas():
 	global user
 	p = StringVar()
-	p.set(user[1])
+	p.set(user.nick)
 	print(p.get())
 	vContrasenas = Toplevel(root, padx=60, pady=10)
 	vContrasenas.title("Contraseña")
 	vContrasenas.resizable(0,0)
-	Label(vContrasenas, text="Página web").grid(row=1, column=1)
-	Entry(vContrasenas, textvariable=web, font=("Arial",12)).grid(row=1, column=2)
-	Label(vContrasenas, text="Username").grid(row=2, column=1)
-	Entry(vContrasenas, textvariable=username, font=("Arial",12)).grid(row=2, column=2)
-	Label(vContrasenas, text="Contraseña").grid(row=3, column=1)
-	Entry(vContrasenas, textvariable=password, font=("Arial",12)).grid(row=3, column=2)
-	Label(vContrasenas, text="Usuario").grid(row=4, column=1)
-	Entry(vContrasenas, textvariable=p, font=("Arial",12), state="disabled").grid(row=4, column=2)
-	Button(vContrasenas, text="Guardar", command = savePassword).grid(row=5, column=1, columnspan=2)
-
+	texto = Text(vContrasenas)
+	texto.pack(fill="both", expand=1) # ASI OCUPA TODO EL TAMAÑO DE LA INTERFAZ
+	texto.config(width=30, height=10, font=("Consolas",12), padx=5, pady=5, selectbackground="red")
 
 def crear_db():
 	global conexion
@@ -159,6 +188,7 @@ def crear_db():
 			username VARCHAR(50) NOT NULL, 
 			password VARCHAR(300) NOT NULL, 
 			id_usuario INTEGER NOT NULL,
+			key VARCHAR(300) NOT NULL,
 			FOREIGN KEY(id_usuario) REFERENCES usuarios(id))
 			""")
 	except sql.OperationalError as ex:
@@ -168,6 +198,7 @@ def crear_db():
 		print("Tabla creada correctamente")
 
 root = Tk()
+vSaveContrasenas = ''
 s = enc.Seguridad()
 conexion = None
 cursor = None
@@ -214,10 +245,10 @@ Button(root, image=imagen1, height = 55, width = 50, command = lambda: retry(n_c
 imagen2 = PhotoImage(file="copy.gif")
 Button(root, image=imagen2, height = 55, width = 50, command = lambda: pc.copy(password.get())).grid(row=2, column=7)
 imagen3 = PhotoImage(file="save.gif")
-btnSave = Button(root, image=imagen3, height = 55, width = 50, state="disabled", command = btnViewContrasenas)
+btnSave = Button(root, image=imagen3, height = 55, width = 50, state="disabled", command = btnSaveContrasenas)
 btnSave.grid(row=2, column=8)
 imagen4 = PhotoImage(file="find.gif")
-btnBuscar = Button(root, image=imagen4, height = 55, width = 50, state="disabled")
+btnBuscar = Button(root, image=imagen4, height = 55, width = 50, state="disabled", command = btnViewContrasenas)
 btnBuscar.grid(row=2, column=9)
 
 

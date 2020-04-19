@@ -1,15 +1,15 @@
 import encriptacion as enc
 class Contrasena():
 
-	def __init__(self, ident, password, username, web):
+	def __init__(self, ident, web, username, password):
 		self.s = enc.Seguridad()
 		self.id = ident
-		self.password = self.s.encrypt(self.s.key, str(password))
-		self.username = username
 		self.web = web
+		self.username = username
+		self.password = password
 
 	def __str__(self):
-		return "Contraseña del usuario {}".format(self.user.nick)
+		return "Contraseña del usuario {} para el sitio web {} y la contraseña {}".format(self.username, self.web, self.password)
 
 
 #c = Contrasena(1, "12345Ral", 2)
