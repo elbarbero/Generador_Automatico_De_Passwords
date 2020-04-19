@@ -22,7 +22,8 @@ class Seguridad():
 		self.key = base64.urlsafe_b64encode(kdf.derive(password)) # Can only use kdf once
 
 	def encrypt(self, data):
-		self.createKey(data) if self.key == None else self.key
+		#self.createKey(data) if self.key == None else self.key
+		self.createKey(data)
 		f = Fernet(self.key)
 		encrypted = f.encrypt(data.encode())
 		return encrypted

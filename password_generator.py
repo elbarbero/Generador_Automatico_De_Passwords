@@ -78,9 +78,9 @@ def login():
 	try:
 		user = cursor.execute("SELECT * FROM usuarios WHERE nick = '{}'".format(str(nombre.get()))).fetchone()
 		if user != None:
-			print(s.key)
+			s.key = None
 			s.createKey(str(passw.get()))
-			print(s.key)
+			print(user[2].encode())
 			decodificado = s.decrypt(user[2].encode())
 			print(decodificado.decode())
 			print(str(passw.get()))
@@ -93,9 +93,11 @@ def login():
 	except (cryptography.exceptions.InvalidSignature, cryptography.fernet.InvalidToken) as ex:
 		print(type(ex).__name__)
 		btnSave.config(state="disabled")
+		btnBuscar.config(state="disabled")
 		MessageBox.showinfo("Login","Contraseña incorrecta")
 	else:
 		btnSave.config(state="normal") if decodificado.decode() == str(passw.get()) else None
+		btnBuscar.config(state="normal") if decodificado.decode() == str(passw.get()) else None
 
 
 def savePassword():
@@ -214,6 +216,9 @@ Button(root, image=imagen2, height = 55, width = 50, command = lambda: pc.copy(p
 imagen3 = PhotoImage(file="save.gif")
 btnSave = Button(root, image=imagen3, height = 55, width = 50, state="disabled", command = btnViewContrasenas)
 btnSave.grid(row=2, column=8)
+imagen4 = PhotoImage(file="find.gif")
+btnBuscar = Button(root, image=imagen4, height = 55, width = 50, state="disabled")
+btnBuscar.grid(row=2, column=9)
 
 
 root.mainloop()
