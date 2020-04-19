@@ -125,7 +125,7 @@ def findAllPassword():
 			for c in cs:
 				s.key = c[5].encode()
 				decodificado = s.decrypt(c[3].encode())
-				user.contrasenas.append(Contrasena(c[0], c[1], c[2], decodificado))
+				user.contrasenas.append(Contrasena(c[0], c[1], c[2], decodificado.decode()))
 			[print(n) for n in user.contrasenas]
 	except sql.IntegrityError as ex:
 		print(type(ex).__name__)
@@ -151,15 +151,26 @@ def btnSaveContrasenas():
 
 def btnViewContrasenas():
 	global user
-	p = StringVar()
-	p.set(user.nick)
-	print(p.get())
+	miPass = StringVar()
+	miUsername = StringVar()
+	miWeb = StringVar()
 	vContrasenas = Toplevel(root, padx=60, pady=10)
 	vContrasenas.title("Contraseña")
 	vContrasenas.resizable(0,0)
 	texto = Text(vContrasenas)
-	texto.pack(fill="both", expand=1) # ASI OCUPA TODO EL TAMAÑO DE LA INTERFAZ
-	texto.config(width=30, height=10, font=("Consolas",12), padx=5, pady=5, selectbackground="red")
+	index = 1
+	Label(vContrasenas, text="Web", font=("Arial",12, "bold", "underline")).grid(row=index, column=1)
+	Label(vContrasenas, text="Username", font=("Arial",12, "bold", "underline")).grid(row=index, column=2)
+	Label(vContrasenas, text="Contraseña", font=("Arial",12, "bold", "underline")).grid(row=index, column=3)
+	for c in user.contrasenas:
+		index+=1
+		miWeb.set(c.web)
+		miUsername.set(c.username)
+		miPass.set(c.password)
+		Label(vContrasenas, text=f'{c.web}', font=("Arial",10)).grid(row=index, column=1)
+		Label(vContrasenas, text=f'{c.username}', font=("Arial",10)).grid(row=index, column=2)
+		Label(vContrasenas, text=f'{c.password}', font=("Arial",10)).grid(row=index, column=3)
+
 
 def crear_db():
 	global conexion
