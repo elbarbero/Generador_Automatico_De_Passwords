@@ -2,14 +2,15 @@
 import string
 from Usuario import *
 from Contrasena import *
+import Creacion_BBDD as bd
 import encriptacion as enc
-import cryptography
 try:
 	from tkinter import *
 	from tkinter import messagebox as MessageBox
 	import random
 	import pyperclip as pc
 	import sqlite3 as sql
+	import cryptography
 except Exception as ex:
 	print('----------instalando libreria-----------')
 	print(type(ex).__name__)
@@ -18,11 +19,14 @@ except Exception as ex:
 	pip.main(['install', 'random'])
 	pip.main(['install', 'pyperclip'])
 	pip.main(['install', 'pysqlite3'])
+	pip.main(['install', 'cryptography'])
+	pip.main(['install', 'pybase64'])
 	from tkinter import *
 	from tkinter import messagebox as MessageBox
 	import random
 	import pyperclip as pc
 	import sqlite3 as sql
+	import cryptography
 
 def generatePassword(size, typeChar):
 	# string.ascii_uppercase + string.ascii_lowercase
@@ -54,8 +58,6 @@ def register():
 	try:
 		if nombre.get() != "" or passw.get() != "":
 			clave = s.encrypt(str(passw.get()))
-			print(type(clave))
-			print(clave)
 			cursor.execute("INSERT INTO usuarios VALUES (null, '{}','{}')".format(str(nombre.get()), clave.decode()))
 			conexion.commit()
 		else:
@@ -69,26 +71,20 @@ def register():
 
 def login():
 	global user, s
-	#users = cursor.execute("SELECT * FROM usuarios").fetchall()
-	#print(users)
-	#s.createKey(str(passw.get()))
-	#print(s.key)
-	#users[1][2].encode()
-	#print(s.decrypt(users[5][2].encode()))
 	try:
+		decodificado = b''
 		u = cursor.execute("SELECT * FROM usuarios WHERE nick = '{}'".format(str(nombre.get()))).fetchone()
 		if u != None:
 			s.key = None
 			s.createKey(str(passw.get()))
-			#print(u[2].encode())
 			decodificado = s.decrypt(u[2].encode())
-			#print(decodificado.decode())
-			#print(str(passw.get()))
+			del(user)
 			user = Usuario(u[0], u[1], u[2])
-			print(u)
 			findAllPassword()
 		else:
 			MessageBox.showinfo("Login","Usuario no existe")
+			btnSave.config(state="disabled")
+			btnBuscar.config(state="disabled")
 	except (cryptography.exceptions.InvalidSignature, cryptography.fernet.InvalidToken) as ex:
 		print(type(ex).__name__)
 		btnSave.config(state="disabled")
@@ -101,21 +97,27 @@ def login():
 
 def savePassword():
 	try:
-		global user, s, vSaveContrasenas		
-		clave = s.encrypt(str(password.get()))
-		print(type(clave))
-		print(clave)
-		print(s.key)
-		cursor.execute("INSERT INTO contrasenas VALUES (null, '{}','{}','{}', {}, '{}')".format(web.get(), username.get(), clave.decode(), user.id, s.key.decode()))
-		conexion.commit()
-		vSaveContrasenas.quit
-		password.set("")
-		username.set("")
-		web.set("")
+		global user, s, vSaveContrasenas
+		if username.get() != '' and password.get() != '' and web.get() != '':
+			clave = s.encrypt(str(password.get()))
+			cursor.execute("INSERT INTO contrasenas VALUES (null, '{}','{}','{}', {}, '{}')".format(web.get(), username.get(), clave.decode(), user.id, s.key.decode()))
+			conexion.commit()
+			cs = cursor.execute("SELECT * FROM contrasenas WHERE id_usuario = '{}'".format(user.id)).fetchall()
+			decodificado = s.decrypt(clave)
+			user.contrasenas.append(Contrasena(cs[-1][0], cs[-1][1], cs[-1][2], decodificado.decode()))
+			#vSaveContrasenas.quit()
+			password.set("")
+			username.set("")
+			web.set("")
+		else:
+			MessageBox.showinfo("Guardar contraseña","Debes rellenar los campos antes de poder guarda la contraseña")
 	except Exception as ex:
 		print(type(ex).__name__)
 		MessageBox.showerror("Save","No se ha podido guardar la contraseña")
 		conexion.rollback()
+	except (cryptography.exceptions.InvalidSignature, cryptography.fernet.InvalidToken) as ex:
+		print(type(ex).__name__)
+		MessageBox.showerror("Save","No se ha podido guardar la contraseña")
 
 def findAllPassword():
 	global user, s
@@ -126,8 +128,10 @@ def findAllPassword():
 				s.key = c[5].encode()
 				decodificado = s.decrypt(c[3].encode())
 				user.contrasenas.append(Contrasena(c[0], c[1], c[2], decodificado.decode()))
-			[print(n) for n in user.contrasenas]
+			#[print(n) for n in user.contrasenas]
 	except sql.IntegrityError as ex:
+		print(type(ex).__name__)
+	except (cryptography.exceptions.InvalidSignature, cryptography.fernet.InvalidToken) as ex:
 		print(type(ex).__name__)
 
 
@@ -135,7 +139,6 @@ def btnSaveContrasenas():
 	global user, vSaveContrasenas
 	p = StringVar()
 	p.set(user.nick)
-	print(p.get())
 	vSaveContrasenas = Toplevel(root, padx=60, pady=10)
 	vSaveContrasenas.title("Contraseñas")
 	vSaveContrasenas.resizable(0,0)
@@ -150,84 +153,84 @@ def btnSaveContrasenas():
 	Button(vSaveContrasenas, text="Guardar", command = savePassword).grid(row=5, column=1, columnspan=2)
 
 def btnViewContrasenas():
-	global user
-	miPass = StringVar()
-	miUsername = StringVar()
-	miWeb = StringVar()
 	vContrasenas = Toplevel(root, padx=60, pady=10)
 	vContrasenas.title("Contraseña")
 	vContrasenas.resizable(0,0)
-	texto = Text(vContrasenas)
-	index = 1
-	Label(vContrasenas, text="Web", font=("Arial",12, "bold", "underline")).grid(row=index, column=1)
-	Label(vContrasenas, text="Username", font=("Arial",12, "bold", "underline")).grid(row=index, column=2)
-	Label(vContrasenas, text="Contraseña", font=("Arial",12, "bold", "underline")).grid(row=index, column=3)
-	for c in user.contrasenas:
-		index+=1
-		miWeb.set(c.web)
-		miUsername.set(c.username)
-		miPass.set(c.password)
-		Label(vContrasenas, text=f'{c.web}', font=("Arial",10)).grid(row=index, column=1)
-		Label(vContrasenas, text=f'{c.username}', font=("Arial",10)).grid(row=index, column=2)
-		Label(vContrasenas, text=f'{c.password}', font=("Arial",10)).grid(row=index, column=3)
+	createWidget(vContrasenas)
 
-
-def crear_db():
-	global conexion
-	global cursor
-
-	conexion = sql.connect("contrasennas.db")
+def createWidget(vContrasenas):
+	global user
 	try:
-		cursor = conexion.cursor()
-		cursor.execute("""
-			CREATE TABLE usuarios(
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			nick VARCHAR(100) UNIQUE NOT NULL,
-			pass VARCHAR(300) NOT NULL)
-			""")
-	except sql.OperationalError as ex:
-		print(type(ex).__name__)
-		print("Las tabla ya existe")
-	else:
-		print("Tabla creada correctamente")
+		miPass = StringVar()
+		miUsername = StringVar()
+		miWeb = StringVar()
+		index = 1
 
-	try:	
-		cursor.execute("""
-			CREATE TABLE contrasenas(
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			web VARCHAR(150), 
-			username VARCHAR(50) NOT NULL, 
-			password VARCHAR(300) NOT NULL, 
-			id_usuario INTEGER NOT NULL,
-			key VARCHAR(300) NOT NULL,
-			FOREIGN KEY(id_usuario) REFERENCES usuarios(id))
-			""")
-	except sql.OperationalError as ex:
-		print(type(ex).__name__)
-		print("Las tabla ya existe")
-	else:
-		print("Tabla creada correctamente")
+		lista = vContrasenas.grid_slaves()
+		for l in lista:
+			l.destroy()
 
+		Label(vContrasenas, text="", font=("Arial",12, "bold", "underline")).grid(row=index, column=1)
+		Label(vContrasenas, text="Web", font=("Arial",12, "bold", "underline")).grid(row=index, column=2)
+		Label(vContrasenas, text="Username", font=("Arial",12, "bold", "underline")).grid(row=index, column=3)
+		Label(vContrasenas, text="Contraseña", font=("Arial",12, "bold", "underline")).grid(row=index, column=4)
+
+		img1 = PhotoImage(file="pencil.gif")
+		img2 = PhotoImage(file="delete.gif")
+
+		for c in user.contrasenas:
+			index+=1
+			miWeb.set(c.web)
+			miUsername.set(c.username)
+			miPass.set(c.password)
+			Checkbutton(vContrasenas, variable = check, onvalue=f'{c.id}', offvalue=-1).grid(row=index, column=1)
+			Label(vContrasenas, text=f'{c.web}', font=("Arial",10)).grid(row=index, column=2)
+			Label(vContrasenas, text=f'{c.username}', font=("Arial",10)).grid(row=index, column=3)
+			Label(vContrasenas, text=f'{c.password}', font=("Arial",10)).grid(row=index, column=4)
+			#Button(vContrasenas, image = "pencil.gif", height = 25, width = 25).grid(row=index, column=5)
+			#Button(vContrasenas, image = "delete.gif", height = 25, width = 25).grid(row=index, column=6)
+		Button(vContrasenas, text = "Borrar selecionada", command=lambda: deletePassword(vContrasenas) if len(user.contrasenas) > 0 and int(check.get()) >-1 else None).grid(row=index+1, column=1, columnspan=2)
+		Button(vContrasenas, text = "Modificar selecionada", command=lambda: deletePassword(vContrasenas) if len(user.contrasenas) > 0 and int(check.get()) >-1 else None).grid(row=index+1, column=4, columnspan=2)
+	except Exception as ex:
+		print(type(ex).__name__)
+
+
+def deletePassword(vContrasenas):
+	print(check.get())
+	cursor.execute("DELETE FROM contrasenas WHERE id='{}'".format(check.get()))
+	conexion.commit()
+	first_or_default = next((n for n in user.contrasenas if n.id==check.get()), None)
+	user.contrasenas.remove(first_or_default)
+	#[print(n) for n in user.contrasenas]
+	createWidget(vContrasenas)
+
+
+# ******************* VARIABLES ******************
 root = Tk()
-vSaveContrasenas = ''
-s = enc.Seguridad()
-conexion = None
-cursor = None
-user = None
-n_characters = IntVar()
-characters = IntVar()
-password = StringVar()
-passw = StringVar()
-nombre = StringVar()
-username = StringVar()
-web = StringVar()
-crear_db()
+bd.crear_db()
+vSaveContrasenas = '' # Interfaz para guardar las contraseñas
+s = enc.Seguridad() # Objeto de tipo encriptacion
+conexion = bd.getConexion() # La conexion de la bbdd
+cursor = bd.getCursor() #El cursor de la bbdd
+user = None # Objeto de tipo Usuario
+check = IntVar() # Variable de los checkbuttons para saber que contraseña borra
+check.set(-1)
+n_characters = IntVar() # Variable de los radiokbuttons para saber la longitud de la contraseña
+characters = IntVar() # Variable de los radiobuttons para saber el tipo de caracteres para crear la contraseña
+password = StringVar() # Variable de los Enty Widget con la contraseña ya generada
+passw = StringVar() # Variable del password del usuario cuando se loguea
+nombre = StringVar() # Variable del nombre del usuario cuando se loguea
+username = StringVar() # Variable del nick que esta asociado a una contraseña al guardarla en la pantalla vContrasenas
+web = StringVar() # Variable de la web que esta asociada a una contraseña al guardarla en la pantalla vContrasenas
+
 root.title("Generador de contraseñas")
 
 root.resizable(0,0)
 root.iconbitmap('keys.ico')
 root.config(padx=15)
 
+
+# ******************* INTERFAZ ******************
 Label(root, text="Usuario").grid(row=1, column=1)
 Entry(root, textvariable=nombre, font=("Arial",12)).grid(row=1, column=2)
 Label(root, text="Contraseña").grid(row=1, column=3)
@@ -261,6 +264,5 @@ btnSave.grid(row=2, column=8)
 imagen4 = PhotoImage(file="find.gif")
 btnBuscar = Button(root, image=imagen4, height = 55, width = 50, state="disabled", command = btnViewContrasenas)
 btnBuscar.grid(row=2, column=9)
-
 
 root.mainloop()

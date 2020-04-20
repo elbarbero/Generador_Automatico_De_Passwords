@@ -1,4 +1,5 @@
 import encriptacion as enc
+
 class Contrasena():
 
 	def __init__(self, ident, web, username, password):

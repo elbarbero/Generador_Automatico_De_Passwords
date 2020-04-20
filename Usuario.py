@@ -8,3 +8,6 @@ class Usuario():
 	def __str__(self):
 		return "Usario {}".format(self.nick)
 
+	def __del__(self):
+		self.contrasenas.clear()
+
