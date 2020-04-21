@@ -3,7 +3,6 @@ import encriptacion as enc
 class Contrasena():
 
 	def __init__(self, ident, web, username, password):
-		self.s = enc.Seguridad()
 		self.id = ident
 		self.web = web
 		self.username = username
