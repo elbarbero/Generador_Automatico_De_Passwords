@@ -1,8 +1,10 @@
 import encriptacion as enc
 
 class Contrasena():
+	"""Clase de tipo Contrasena"""
 
 	def __init__(self, ident, web, username, password):
+		"""Constructor de la clase Contrasena"""
 		self.id = ident
 		self.web = web
 		self.username = username

@@ -29,10 +29,20 @@ except Exception as ex:
 	import cryptography
 
 def generatePassword(size, typeChar):
+	"""Método para generar una contraseña en función de una longitud y tipo de carácteres proporcionados
+		* size -> longitud de la constaseña
+		* typeChar -> tipos de carácteres con la que se va a crear la contraseña. Se le pasa un número en funcion del radiobutton seleccionado
+		* return la contraseña ya generada
+	"""
 	# string.ascii_uppercase + string.ascii_lowercase
 	return ''.join(random.choice(chooseCharacters(typeChar)) for _ in range(size))
 
 def retry(size, typeChar):
+	"""Método del botón para volver a generar una contraseña en función de una longitud y tipo de carácteres proporcionados
+		* size -> longitud de la constaseña
+		* typeChar -> tipos de carácteres con la que se va a crear la contraseña. Se le pasa un número en funcion del radiobutton seleccionado
+	"""
+	# string.ascii_uppercase + string.ascii_lowercase
 	try:
 		txtPass.configure(state='normal')
 		#txtPass.delete(0,END)
@@ -40,9 +50,15 @@ def retry(size, typeChar):
 		#txtPass.insert(0,generatePassword(size, typeChar))
 		txtPass.configure(state='readonly')
 	except IndexError as ex:
+		print(printExceptionMessage())
 		MessageBox.showinfo("Tipo de carácteres","Selecciona el tipo de carácteres de la contraseña")
 
 def chooseCharacters(typeChar):
+	"""Método para elegir el tipo de carácteres
+		* typeChar -> tipos de carácteres con la que se va a crear la contraseña. Se le pasa un número en funcion del radiobutton seleccionado
+		* return el tipo de caracteres
+	"""
+	# string.ascii_uppercase + string.ascii_lowercase
 	var=''
 	if typeChar == 1: # all characters
 		var += string.ascii_letters + string.digits + string.punctuation
@@ -55,6 +71,9 @@ def chooseCharacters(typeChar):
 	return var
 
 def register():
+	"""
+		Método para registar al usuario con su clave encriptada en la BBDD.
+	"""
 	try:
 		if nombre.get() != "" or passw.get() != "":
 			clave = s.encrypt(str(passw.get()))
@@ -64,12 +83,17 @@ def register():
 			MessageBox.showinfo("Registro","Debes rellenar el campo del nombre y de la contraseña")
 	except sql.IntegrityError as ex:
 		print(type(ex).__name__)
+		print(printExceptionMessage())
 		MessageBox.showinfo("Registro","El usuario ya existe")
 	else:
 		MessageBox.showinfo("Registro","Usuario creado correctamente")
 		login()
 
 def login():
+	"""
+		Método para logearse en la aplicación si los datos que ha introducido en los campos son correctos y 
+		deben de corresponder con los datos que hay en la BBD que introdujo cuando se registró en la aplicación.
+	"""
 	global user, s
 	try:
 		decodificado = b''
@@ -87,6 +111,7 @@ def login():
 			btnBuscar.config(state="disabled")
 	except (cryptography.exceptions.InvalidSignature, cryptography.fernet.InvalidToken, sql.IntegrityError) as ex:
 		print(type(ex).__name__)
+		print(printExceptionMessage())
 		btnSave.config(state="disabled")
 		btnBuscar.config(state="disabled")
 		MessageBox.showinfo("Login","Contraseña incorrecta")
@@ -96,6 +121,12 @@ def login():
 
 
 def savePassword(*args):
+	"""
+		Método en donde se inserta o modifica una contraseña en la BBDD en función del número de argumentos.
+		Cero argumentos inserta una nueva contraseña en la BBDD
+		Uno o más argumentos modifica la contraseña que le pasamos en la primera posición de los argumentos
+			* args --> argumentos a pasar al metodo que pueden ser las variables que se crean oportunas
+	"""
 	try:
 		global user, s, vSaveContrasenas
 		if username.get() != '' and password.get() != '' and web.get() != '':
@@ -107,18 +138,17 @@ def savePassword(*args):
 				decodificado = s.decrypt(clave)
 				user.contrasenas.append(Contrasena(cs[-1][0], cs[-1][1], cs[-1][2], decodificado.decode()))
 			else:
-				#print(args[0])
-				print(next((x for x in user.contrasenas if x.id == args[0].id), None))
+				#print(next((x for x in user.contrasenas if x.id == args[0].id), None))
 				cursor.execute(f"UPDATE contrasenas SET web='{web.get()}', username='{username.get()}', password='{clave.decode()}', key='{s.key.decode()}' WHERE id='{args[0].id}' AND id_usuario='{user.id}'")
 				conexion.commit()
-				[user.contrasenas.remove(n) for n in user.contrasenas if n.id == args[0].id]
-				print(next((x for x in user.contrasenas if x.id == args[0].id), None))
+				[user.contrasenas.remove(n) for n in user.contrasenas if n.id == args[0].id] #borro la contraseña de lista
+				#print(next((x for x in user.contrasenas if x.id == args[0].id), None))
 				cs = findOnePassword(args[0].id)
 				decodificado = s.decrypt(cs.password.encode())
 				cs.password = decodificado.decode()
 				user.contrasenas.append(cs)
 				createWidget(args[1])
-			vSaveContrasenas.destroy()
+			vSaveContrasenas.destroy() #cierro la ventana
 			password.set("")
 			username.set("")
 			web.set("")
@@ -127,12 +157,17 @@ def savePassword(*args):
 			MessageBox.showinfo("Guardar contraseña","Debes rellenar los campos antes de poder guarda la contraseña")
 	except sql.IntegrityError as ex:
 		print(type(ex).__name__)
+		print(printExceptionMessage())
 		MessageBox.showerror("Guardar contraseña","Ha ocurrido un error al guardar la contraseña")
 	except (cryptography.exceptions.InvalidSignature, cryptography.fernet.InvalidToken) as ex:
 		print(type(ex).__name__)
+		print(printExceptionMessage())
 		MessageBox.showerror("Guardar contraseña","Ha ocurrido un error al guardar la contraseña")
 
 def findAllPassword():
+	"""
+		Método que busca en la BBDD todas las contraseñas de un suario
+	"""
 	global user, s
 	try:
 		cs = cursor.execute("SELECT * FROM contrasenas WHERE id_usuario = '{}'".format(user.id)).fetchall()
@@ -144,12 +179,19 @@ def findAllPassword():
 			#[print(n) for n in user.contrasenas]
 	except sql.IntegrityError as ex:
 		print(type(ex).__name__)
+		print(printExceptionMessage())
 	except (cryptography.exceptions.InvalidSignature, cryptography.fernet.InvalidToken) as ex:
 		print(type(ex).__name__)
+		print(printExceptionMessage())
 
 
 def btnSaveContrasenas(*args):
-	global user, vSaveContrasenas
+	"""
+		Método para crear la ventana en donde se van a poder guardar o modificar las contraseñas
+		en función del número de argumentos
+			* args --> argumentos a pasar al metodo que pueden ser las variables que se crean oportunas
+	"""
+	global vSaveContrasenas
 	p = StringVar()
 	p.set(user.nick)
 	vSaveContrasenas = Toplevel(root, padx=60, pady=10)
@@ -174,13 +216,19 @@ def btnSaveContrasenas(*args):
 			Button(vSaveContrasenas, text="Modificar", command = lambda: savePassword(c, args[0])).grid(row=5, column=1, columnspan=2)
 
 def btnViewContrasenas():
+	"""
+		Método para inicializar y crear la ventana donde se van a mostrar tdas las contraseñas del usuario
+	"""
 	vContrasenas = Toplevel(root, padx=60, pady=10)
 	vContrasenas.title("Contraseña")
 	vContrasenas.resizable(0,0)
 	createWidget(vContrasenas)
 
 def createWidget(vContrasenas):
-	global user
+	"""
+		Método para crear todos los widgets que va a tener la ventana donde van a mostrar las contraseás del suario.
+			* vContrasenas -> objeto de la ventana donde se van a crear y mostrar todos los widgets
+	"""
 	try:
 		miPass = StringVar()
 		miUsername = StringVar()
@@ -189,7 +237,7 @@ def createWidget(vContrasenas):
 		index = 1
 
 		lista = vContrasenas.grid_slaves()
-		for l in lista:
+		for l in lista: # Borro todos los widget de la ventana
 			l.destroy()
 
 		Label(vContrasenas, text="", font=("Arial",12, "bold", "underline")).grid(row=index, column=1)
@@ -209,16 +257,18 @@ def createWidget(vContrasenas):
 			Label(vContrasenas, text=f'{c.web}', font=("Arial",10)).grid(row=index, column=2)
 			Label(vContrasenas, text=f'{c.username}', font=("Arial",10)).grid(row=index, column=3)
 			Label(vContrasenas, text=f'{c.password}', font=("Arial",10)).grid(row=index, column=4)
-			#Button(vContrasenas, image = "pencil.gif", height = 25, width = 25).grid(row=index, column=5)
-			#Button(vContrasenas, image = "delete.gif", height = 25, width = 25).grid(row=index, column=6)
 		Button(vContrasenas, text = "Borrar selecionada", command=lambda: deletePassword(vContrasenas) if len(user.contrasenas) > 0 and int(check.get()) >-1 else None).grid(row=index+1, column=1, columnspan=2)
 		Button(vContrasenas, text = "Modificar selecionada", command=lambda: btnSaveContrasenas(vContrasenas) if len(user.contrasenas) > 0 and int(check.get()) >-1 else None).grid(row=index+1, column=4, columnspan=2)
 	except Exception as ex:
 		print(type(ex).__name__)
+		print(printExceptionMessage())
 
 
 def deletePassword(vContrasenas):
-	print(check.get())
+	"""
+		Método para borrar una contraseña de la BBDD. Después se refresca la ventana donde se muestran las contraseñas
+			* vContrasenas -> objeto de la ventana donde se van a crear y mostrar todos los widgets
+	"""
 	cursor.execute("DELETE FROM contrasenas WHERE id='{}'".format(check.get()))
 	conexion.commit()
 	first_or_default = next((n for n in user.contrasenas if n.id==check.get()), None)
@@ -227,6 +277,11 @@ def deletePassword(vContrasenas):
 	createWidget(vContrasenas)
 
 def findOnePassword(id):
+	"""
+		Método para buscar una contraseña en la BBDD en función del id de la contraseña a buscar.
+			* id -> clave primaria de la contraseña a buscar
+			* return un objeto de tipo Contraseña
+	"""
 	try:
 		result = cursor.execute("SELECT * FROM contrasenas WHERE id = '{}'".format(str(id))).fetchone()
 		if result != None:
@@ -235,7 +290,35 @@ def findOnePassword(id):
 			return c
 	except sql.IntegrityError as ex:
 		print(type(ex).__name__)
+		print(printExceptionMessage())
 
+def center_window (window,w=0, h=0):
+	"""
+		Método para centrar la ventana a la pantalla
+			* w --> El ancho de la ventana, si no se le pasa nada, el ancho es 0
+			* h --> El alto de la ventana, si no se le pasa nada, el alto es 0
+	"""
+	# get screen width and height
+	ws = window.winfo_screenwidth()
+	hs = window.winfo_screenheight()
+	w = window.winfo_width() if w == 0 else w
+	h = window.winfo_height() if h == 0 else h
+	print(w)
+	print(h)
+	# calculate position x, y
+	x = (ws/2) - (w/2)    
+	y = (hs/2) - (h/2)
+	window.geometry('%dx%d+%d+%d' % (w, h, x, y))
+
+def printExceptionMessage():
+	"""
+		Metodo para mostrar un mensaje de error según la excepción producida
+			* return el mensaje a mostrar
+	"""
+	import sys, traceback
+	exc_type, exc_value, exc_traceback = sys.exc_info()
+	track = traceback.format_exception(exc_type, exc_value, exc_traceback)
+	return traceback.print_exception(exc_type, exc_value, exc_traceback, limit=2, file=sys.stdout)
 
 # ******************* VARIABLES ******************
 root = Tk()
@@ -296,5 +379,6 @@ btnSave.grid(row=2, column=8)
 imagen4 = PhotoImage(file="find.gif")
 btnBuscar = Button(root, image=imagen4, height = 55, width = 50, state="disabled", command = btnViewContrasenas)
 btnBuscar.grid(row=2, column=9)
+
 
 root.mainloop()

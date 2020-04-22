@@ -4,14 +4,17 @@ conexion = None
 cursor = None
 
 def getConexion():
+	"""Devuelve la conexion de la BBDD"""
 	global conexion
 	return conexion
 
 def getCursor():
+	"""Devuelve el cursor de la BBDD"""
 	global cursor
 	return cursor
 
 def crear_db():
+	"""Método para crear las tablas de la BBDD"""
 	global conexion
 	global cursor
 

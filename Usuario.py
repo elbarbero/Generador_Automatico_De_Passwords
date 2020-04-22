@@ -1,5 +1,8 @@
 class Usuario():
+	"""Clase de tipo Usuario"""
+
 	def __init__(self, identicador, nick, password, contrasenas = []):
+		"""Constructor de la clase de tipo Usuario"""
 		self.id = identicador
 		self.nick = nick
 		self.password = password
